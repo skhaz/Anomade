@@ -2,7 +2,7 @@
 #include <QtGui>
 
 Highlighter::Highlighter(QTextDocument *parent)
-: QSyntaxHighlighter(parent)
+    : QSyntaxHighlighter(parent)
 {
     HighlightingRule rule;
 

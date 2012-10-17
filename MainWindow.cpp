@@ -1,7 +1,9 @@
 #include <QtWebKit>
 #include "MainWindow.hpp"
 #include "Highlighter.hpp"
-#include "../libs/markdowncxx.h"
+#include "markdown.h"
+
+
 
 MainWindow::MainWindow()
 {
@@ -24,12 +26,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
-void MainWindow::resizeEvent (QResizeEvent *event) 
+void MainWindow::resizeEvent (QResizeEvent *event)
 {
     previewArea->setFixedWidth(editArea->width());
 }
 
-void MainWindow::newFile() 
+void MainWindow::newFile()
 {
     MainWindow *other = new MainWindow;
     other->move(x() + 40, y() + 40);
@@ -75,7 +77,7 @@ bool MainWindow::save()
 bool MainWindow::saveAs()
 {
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save As"),
-            curFile);
+                                                    curFile);
     if (fileName.isEmpty())
         return false;
 
@@ -85,7 +87,7 @@ bool MainWindow::saveAs()
 void MainWindow::about()
 {
     QMessageBox::about(this, tr("About Anomade"),
-            tr("Anomade (Another Markdown Editor 1.0)\nEduardo Nunes Pereira (eduardonunesp@gmail.com)"));
+                       tr("Anomade (Another Markdown Editor 1.0)\nEduardo Nunes Pereira (eduardonunesp@gmail.com)"));
 }
 
 void MainWindow::documentWasModified()
@@ -105,7 +107,7 @@ void MainWindow::init()
     editArea->setLineWrapMode(QTextEdit::NoWrap);
     editArea->setFont(QFont("Monoespace",12));
     editArea->setMinimumWidth(400);
-    
+
     previewArea = new QWebView(this);
     previewArea->setFixedWidth(editArea->width());
     previewArea->settings()->setUserStyleSheetUrl(QUrl::fromLocalFile(":resources/my.css"));
@@ -121,7 +123,7 @@ void MainWindow::init()
     splitter->setSizes(sizes);
     splitter->setStyleSheet("border: 1px;");
     splitter->setChildrenCollapsible(false);
-    
+
     setCentralWidget(splitter);
     setUnifiedTitleAndToolBarOnMac(true);
 
@@ -142,13 +144,13 @@ void MainWindow::createMenus()
     fileMenu->addAction(openAct);
     fileMenu->addAction(saveAct);
     fileMenu->addAction(saveAsAct);
-    
+
     fileMenu->addSeparator();
-    
+
     exportMenu = fileMenu->addMenu(tr("Export"));
     exportMenu->addAction(exportHTMLAct);
     exportMenu->addAction(exportPDFAct);
-    
+
     fileMenu->addSeparator();
 
     fileMenu->addAction(closeAct);
@@ -199,19 +201,19 @@ void MainWindow::createActions()
     cutAct = new QAction(QIcon(":/images/cut.png"), tr("Cu&t"), this);
     cutAct->setShortcuts(QKeySequence::Cut);
     cutAct->setStatusTip(tr("Cut the current selection's contents to the "
-                "clipboard"));
+                            "clipboard"));
     connect(cutAct, SIGNAL(triggered()), editArea, SLOT(cut()));
 
     copyAct = new QAction(QIcon(":/images/copy.png"), tr("&Copy"), this);
     copyAct->setShortcuts(QKeySequence::Copy);
     copyAct->setStatusTip(tr("Copy the current selection's contents to the "
-                "clipboard"));
+                             "clipboard"));
     connect(copyAct, SIGNAL(triggered()), editArea, SLOT(copy()));
 
     pasteAct = new QAction(QIcon(":/images/paste.png"), tr("&Paste"), this);
     pasteAct->setShortcuts(QKeySequence::Paste);
     pasteAct->setStatusTip(tr("Paste the clipboard's contents into the current "
-                "selection"));
+                              "selection"));
     connect(pasteAct, SIGNAL(triggered()), editArea, SLOT(paste()));
 
     aboutAct = new QAction(tr("&About"), this);
@@ -243,17 +245,17 @@ bool MainWindow::maybeSave()
     if (editArea->document()->isModified())  {
         QMessageBox::StandardButton ret;
         ret = QMessageBox::warning(this, tr("Anomade"),
-                tr("The document has been modified.\n"
-                    "Do you want to save your changes?"),
-                QMessageBox::Save | QMessageBox::Discard
-                | QMessageBox::Cancel);
+                                   tr("The document has been modified.\n"
+                                      "Do you want to save your changes?"),
+                                   QMessageBox::Save | QMessageBox::Discard
+                                   | QMessageBox::Cancel);
         if (ret == QMessageBox::Save)
             return save();
         else if (ret == QMessageBox::Cancel)
             return false;
     }
 
-    return true;    
+    return true;
 }
 
 
@@ -275,9 +277,13 @@ void MainWindow::writeSettings()
 
 void MainWindow::updatePreview()
 {
-    std::string htmlRes;
-    markdown2html(editArea->toPlainText().toStdString(), htmlRes);
-    previewArea->page()->mainFrame()->setHtml(QString(htmlRes.c_str()));
+    QString text = editArea->toPlainText();
+
+    Document *document = mkd_string(text.toUtf8().data(), text.size(), 0);
+
+
+    // markdown2html(editArea->toPlainText().toStdString(), htmlRes);
+    previewArea->page()->mainFrame()->setHtml("out");
 }
 
 void MainWindow::onLoadFinished(bool isFinish)
@@ -291,9 +297,9 @@ void MainWindow::loadFile(const QString &fileName)
     QFile file(fileName);
     if (!file.open(QFile::ReadOnly | QFile::Text))  {
         QMessageBox::warning(this, tr("Anomade"),
-                tr("Cannot read file %1:\n%2.")
-                .arg(fileName)
-                .arg(file.errorString()));
+                             tr("Cannot read file %1:\n%2.")
+                             .arg(fileName)
+                             .arg(file.errorString()));
         return;
     }
 
@@ -327,9 +333,9 @@ bool MainWindow::saveFile(const QString &fileName)
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text))  {
         QMessageBox::warning(this, tr("Anomade"),
-                tr("Cannot write file %1:\n%2.")
-                .arg(fileName)
-                .arg(file.errorString()));
+                             tr("Cannot write file %1:\n%2.")
+                             .arg(fileName)
+                             .arg(file.errorString()));
         return false;
     }
 
@@ -350,23 +356,23 @@ QString MainWindow::strippedName(const QString &fullFileName)
 void MainWindow::exportToHTML()
 {
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save As"),
-            "Untitled.html");
+                                                    "Untitled.html");
 
     QFile file(fileName);
     if (!file.open(QFile::WriteOnly | QFile::Text))  {
         QMessageBox::warning(this, tr("Anomade"),
-                tr("Cannot write file %1:\n%2.")
-                .arg(fileName)
-                .arg(file.errorString()));
+                             tr("Cannot write file %1:\n%2.")
+                             .arg(fileName)
+                             .arg(file.errorString()));
         return;
     }
-    
+
     QFile css(":resources/my.css");
     if (!css.open(QFile::ReadOnly | QFile::Text))  {
         QMessageBox::warning(this, tr("Anomade"),
-                tr("Cannot read file %1:\n%2.")
-                .arg(":resources/my.css")
-                .arg(css.errorString()));
+                             tr("Cannot read file %1:\n%2.")
+                             .arg(":resources/my.css")
+                             .arg(css.errorString()));
     } else {
         previewArea->page()->mainFrame()->findFirstElement("style").replace(""); // clean up
         previewArea->page()->mainFrame()->findFirstElement("html").appendInside("<style>" + css.readAll() + "</style>");
@@ -381,14 +387,14 @@ void MainWindow::exportToHTML()
 void MainWindow::exportToPDF()
 {
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save As"),
-            "Untitled.pdf");
+                                                    "Untitled.pdf");
 
     QFile css(":resources/my.css");
     if (!css.open(QFile::ReadOnly | QFile::Text))  {
         QMessageBox::warning(this, tr("Anomade"),
-                tr("Cannot read file %1:\n%2.")
-                .arg(":resources/my.css")
-                .arg(css.errorString()));
+                             tr("Cannot read file %1:\n%2.")
+                             .arg(":resources/my.css")
+                             .arg(css.errorString()));
     } else {
         previewArea->page()->mainFrame()->findFirstElement("style").replace(""); // clean up
         previewArea->page()->mainFrame()->findFirstElement("html").appendInside("<style>" + css.readAll() + "</style>");
