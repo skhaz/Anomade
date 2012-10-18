@@ -1,4 +1,5 @@
 #include <QtWebKit>
+#include <QtDebug>
 #include "MainWindow.hpp"
 #include "Highlighter.hpp"
 #include "markdown.h"
@@ -277,13 +278,15 @@ void MainWindow::writeSettings()
 
 void MainWindow::updatePreview()
 {
-    QString text = editArea->toPlainText();
+    QString markdown = editArea->toPlainText();
 
-    Document *document = mkd_string(text.toUtf8().data(), text.size(), 0);
+    char *text;
+    Document *document = mkd_string(markdown.toUtf8().data(), markdown.size(), 0);
+    mkd_compile(document, 0);
+    int len = mkd_document(document, &text);
+    mkd_cleanup(document);
 
-
-    // markdown2html(editArea->toPlainText().toStdString(), htmlRes);
-    previewArea->page()->mainFrame()->setHtml("out");
+    previewArea->page()->mainFrame()->setHtml(QString::fromAscii(text, len));
 }
 
 void MainWindow::onLoadFinished(bool isFinish)
